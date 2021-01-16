@@ -1,5 +1,7 @@
 package subway.section;
 
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
@@ -10,8 +12,15 @@ import java.util.stream.Collectors;import org.springframework.util.ReflectionUti
 import subway.exceptions.InvalidValueException;
 import subway.station.*;
 
+@Repository
 public class SectionDao {
     private static Long seq = 0L;
+    private JdbcTemplate jdbcTemplate;
+
+    public SectionDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
     private static List<Section> sections = new ArrayList<>();
 
     private static SectionDao instance;
@@ -139,5 +148,34 @@ public class SectionDao {
         if (sections.stream().filter(section -> section.getUpStationId() == upId).collect(Collectors.toList()).size() == 0)
             return -1L;
         return sections.stream().filter(section -> section.getUpStationId() == upId).collect(Collectors.toList()).get(0).getId();
+    }
+
+    public List<Section> findByLineId(Long lineId){
+        return this.jdbcTemplate.query("SELECT * FROM SECTION WHERE line_id = ?",
+                (rs, rowNum) -> new Section(
+                        rs.getLong("id"),
+                        rs.getLong("up_station_id"),
+                        rs.getLong("down_station_id"),
+                        rs.getInt("distance")),
+                lineId);
+    }
+
+    public Long getDownStationId(Long lineId){
+        List<Section> sections = findByLineId(lineId);
+        return sections.get(sections.size()-1).getDownStationId();
+    }
+
+    public Long getUpStationId(Long lineId){
+        List<Section> sections = findByLineId(lineId);
+        return sections.get(0).getUpStationId();
+    }
+
+    public int getDistance(Long lineId) {
+        List<Section> sections = findByLineId(lineId);
+        int distance = 0;
+        for (Section section : sections){
+            distance += section.getDistance();
+        }
+        return distance;
     }
 }

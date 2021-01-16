@@ -1,58 +1,70 @@
 package subway.line;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 import org.springframework.util.ReflectionUtils;
+import subway.exceptions.InvalidValueException;
+import subway.section.SectionDao;
 import subway.station.Station;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Repository
 public class LineDao {
-    private static Long seq = 0L;
-    private static List<Line> lines = new ArrayList<>();
+    @Autowired
+    SectionDao sectionDao;
+    private JdbcTemplate jdbcTemplate;
 
-    private static LineDao instance;
-
-    public static LineDao getInstance(){
-        if(instance == null)
-            instance = new LineDao();
-        return instance;
+    public LineDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
-    private LineDao(){}
 
     public Line save(Line line) {
+        List<Line> lines = findAll();
         if(lines.stream().anyMatch((Line lineSaved) ->
                 lineSaved.getName().equals(line.getName()) &&
-                lineSaved.getUpStationId() == line.getUpStationId() &&
-                        lineSaved.getDownStationId() == line.getDownStationId()
+                lineSaved.getUpStationId(sectionDao) == line.getUpStationId(sectionDao) &&
+                        lineSaved.getDownStationId(sectionDao) == line.getDownStationId(sectionDao)
         )){
-            throw new RuntimeException();
+            throw new InvalidValueException();
         }
 
-        Line persistLine = createNewObject(line);
-        lines.add(persistLine);
-        return persistLine;
+        String SQL = "insert into LINE (name) values (?)";
+        int stationId = jdbcTemplate.update(SQL, new Object[]{line.getName(), line.getColor(), line.getExtraFare()});
+
+        return findById(Long.valueOf(stationId));
     }
 
     public List<Line> findAll() {
-        return lines;
+        return jdbcTemplate.query("select * from LINE",
+                (rs, rowNum) -> {
+                    Line newLine = new Line(
+                            rs.getString("name"),
+                            rs.getString("color"),
+                            rs.getInt("extraFare")
+                    );
+                    return newLine;
+                });
     }
 
     public Line findById(Long id) {
-        return lines.stream()
-                .filter(val -> val.getId()==id)
-                .collect(Collectors.toList()).get(0);
+        return this.jdbcTemplate.queryForObject("SELECT * FROM LINE where id = ?",
+                (rs, rowNum) -> { Line newLine = new Line(
+                            rs.getLong("id"),
+                            rs.getString("name"),
+                            rs.getString("color"),
+                            rs.getInt("extraFare")
+                    );
+                return newLine;
+                }, id);
     }
 
     public void deleteById(Long id) {
-        lines.removeIf(it -> it.getId().equals(id));
+        jdbcTemplate.update("delete from LINE where id = ?", id);
     }
 
-    private Line createNewObject(Line line) {
-        Field field = ReflectionUtils.findField(Line.class, "id");
-        field.setAccessible(true);
-        ReflectionUtils.setField(field, line, ++seq);
-        return line;
-    }
+
 }

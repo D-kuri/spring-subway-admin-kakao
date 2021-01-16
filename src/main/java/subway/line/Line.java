@@ -1,49 +1,28 @@
 package subway.line;
-
 import subway.section.*;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
-import subway.station.*;
 import java.util.*;import subway.section.SectionDao;
 import subway.station.StationDao;
-
-import java.util.*;import subway.section.SectionDao;
-import subway.station.StationDao;
-
-import java.util.*;import subway.section.SectionDao;
-import subway.station.StationDao;
-
-import java.util.*;import subway.section.SectionDao;
-import subway.station.StationDao;
-
-import java.util.*;import subway.section.SectionDao;
-import subway.station.StationDao;
-
-import java.util.*;import subway.section.SectionDao;
-import subway.station.StationDao;
-
-import java.util.*;
 
 public class Line {
+
     private Long id;
     private int extraFare;
     private String color;
     private String name;
-    private Long upStationId;
-    private Long downStationId;
-    private int distance;
 
     public Line() {
     }
 
-    public Line(String name, String color, Long upStationId, Long downStationId, int distance, int extraFare) {
+    public Line(Long id, String name, String color, int extraFare) {
+        this(name, color, extraFare);
+        this.id = id;
+    }
+
+    public Line(String name, String color, int extraFare) {
         this.name = name;
         this.color = color;
-        this.upStationId = upStationId;
-        this.downStationId = downStationId;
-        this.distance = distance;
         this.extraFare = extraFare;
     }
 
@@ -67,7 +46,7 @@ public class Line {
         return name;
     }
 
-    public List<Long> getStationInfo() {
+    public List<Long> getStationInfo(StationDao stationDao) {
 //        Set<Long> stations = new HashSet<>();
 //        SectionDao.getInstance()
 //                .findAll().stream()
@@ -83,8 +62,8 @@ public class Line {
                 .findAll().stream()
                 .filter(section -> section.getLineId() == id)
                 .forEach(section -> {
-                    stations.add(StationDao.getInstance().findById(section.getUpStationId()).getId());
-                    stations.add(StationDao.getInstance().findById(section.getDownStationId()).getId());
+                    stations.add(stationDao.findById(section.getUpStationId()).getId());
+                    stations.add(stationDao.findById(section.getDownStationId()).getId());
                 });
         return stations.stream().distinct().collect(Collectors.toList());
 //        List<Section> sections = new ArrayList<>();
@@ -119,32 +98,15 @@ public class Line {
         }
     }
 
-    public Long getUpStationId() {
-        return upStationId;
+    public Long getUpStationId(SectionDao sectionDao) {
+        return sectionDao.getUpStationId(id);
     }
 
-    public Long getDownStationId() {
-        return downStationId;
+    public Long getDownStationId(SectionDao sectionDao) {
+        return sectionDao.getDownStationId(id);
     }
 
-    public int getDistance() {
-        return distance;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Line line = (Line) o;
-        return distance == line.distance &&
-                Objects.equals(color, line.color) &&
-                Objects.equals(name, line.name) &&
-                Objects.equals(upStationId, line.upStationId) &&
-                Objects.equals(downStationId, line.downStationId);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(color, name, upStationId, downStationId, distance);
+    public int getDistance(SectionDao sectionDao) {
+        return sectionDao.getDistance(id);
     }
 }
